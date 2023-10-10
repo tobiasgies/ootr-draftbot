@@ -3,19 +3,23 @@ package de.tobiasgies.ootr.draftbot.drafts
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
 
-class Season7TournamentDraftState(initialDraftPool: DraftPool) {
+class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
     var draftPool: DraftPool = initialDraftPool
         private set
+
     var currentStep: Step = Step.PICK_ORDER
         private set
-    var userBansFirst: Boolean? = null
-        private set
-    var bans: List<String> = emptyList()
-        private set
-    var majorPicks: Map<String, DraftableOption> = mapOf()
-        private set
-    var minorPicks: Map<String, DraftableOption> = mapOf()
-        private set
+
+    override val isComplete: Boolean
+        get() = currentStep == Step.DONE
+
+    override val selectedSettings: Map<String, DraftableOption>
+        get() = majorPicks + minorPicks
+
+    private var userBansFirst: Boolean? = null
+    private var bans: List<String> = emptyList()
+    private var majorPicks: Map<String, DraftableOption> = mapOf()
+    private var minorPicks: Map<String, DraftableOption> = mapOf()
 
     fun userBansFirst() {
         if (currentStep != Step.PICK_ORDER) {
@@ -37,10 +41,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) {
         if (currentStep != Step.BAN) {
             throw IllegalStateException("Cannot ban a setting before the ban step")
         }
-        if (draftPool.major.containsKey(name)) {
-            draftPool = draftPool.without(name)
-            bans += name
-        } else if (draftPool.minor.containsKey(name)) {
+        if (draftPool.major.containsKey(name) || draftPool.minor.containsKey(name)) {
             draftPool = draftPool.without(name)
             bans += name
         } else {
