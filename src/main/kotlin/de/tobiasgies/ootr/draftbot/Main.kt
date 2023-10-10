@@ -1,7 +1,6 @@
 package de.tobiasgies.ootr.draftbot
 
-import de.tobiasgies.ootr.draftbot.client.LocalResourceDraftPoolLoader
-import de.tobiasgies.ootr.draftbot.client.LocalResourcePresetsLoader
+import de.tobiasgies.ootr.draftbot.client.LocalResourceLoader
 import de.tobiasgies.ootr.draftbot.drafts.Season7QualifierDraft
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraft
 import dev.minn.jda.ktx.events.onCommand
@@ -16,8 +15,9 @@ fun main() {
 
     val discordToken = dotenv["DISCORD_TOKEN"]!!
 
-    val presets = LocalResourcePresetsLoader().loadPresets()
-    val draftPool = LocalResourceDraftPoolLoader().loadDraftPool()
+    val loader = LocalResourceLoader()
+    val presets = loader.loadPresets()
+    val draftPool = loader.loadDraftPool()
 
     val drafts = listOf(
         Season7QualifierDraft(draftPool),
