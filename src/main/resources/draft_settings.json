@@ -1,0 +1,175 @@
+{
+    "major": {
+        "bridge": {
+            "open": {
+                "bridge": "open",
+                "shuffle_ganon_bosskey": "medallions"
+            }
+        },
+        "deku": {
+            "open": {
+                "open_forest": "open"
+            }
+        },
+        "interiors": {
+            "on": {
+                "shuffle_interior_entrances": "all"
+            }
+        },
+        "dungeons": {
+            "on": {
+                "shuffle_dungeon_entrances": "simple"
+            }
+        },
+        "grottos": {
+            "on": {
+                "shuffle_grotto_entrances": true
+            }
+        },
+        "shops": {
+            "on": {
+                "shopsanity": 4
+            }
+        },
+        "ow_tokens": {
+            "on": {
+                "tokensanity": "overworld"
+            }
+        },
+        "dungeon_tokens": {
+            "on": {
+                "tokensanity": "dungeons"
+            }
+        },
+        "scrubs": {
+            "on": {
+                "shuffle_scrubs": "low"
+            }
+        },
+        "keys": {
+            "keysy": {
+                "shuffle_smallkeys": "remove",
+                "shuffle_bosskeys": "remove"
+            },
+            "anywhere": {
+                "shuffle_smallkeys": "keysanity",
+                "key_rings_choice": "all",
+                "keyring_give_bk": true
+            }
+        },
+        "required_only": {
+            "on": {
+                "reachable_locations": "beatable"
+            }
+        },
+        "fountain": {
+            "open": {
+                "zora_fountain": "open"
+            }
+        },
+        "cows": {
+            "on": {
+                "shuffle_cows": true
+            }
+        },
+        "gerudo_card": {
+            "on": {
+                "shuffle_gerudo_card": true
+            }
+        },
+        "trials": {
+            "on": {
+                "trials": 3
+            }
+        },
+        "door_of_time": {
+            "closed": {
+                "open_door_of_time": false
+            }
+        }
+    },
+    "minor": {
+        "starting_age": {
+            "child": {
+                "starting_age": "child"
+            },
+            "adult": {
+                "starting_age": "adult"
+            }
+        },
+        "random_spawns": {
+            "on": {
+                "spawn_positions": [
+                    "child",
+                    "adult"
+                ]
+            }
+        },
+        "consumables": {
+            "none": {
+                "start_with_consumables": false
+            }
+        },
+        "rupees": {
+            "startwith": {
+                "start_with_rupees": true
+            }
+        },
+        "cuccos": {
+            "1": {
+                "chicken_count": 1
+            }
+        },
+        "free_scarecrow": {
+            "on": {
+                "free_scarecrow": true
+            }
+        },
+        "camc": {
+            "off": {
+                "correct_chest_appearances": "off"
+            }
+        },
+        "mask_quest": {
+            "complete": {
+                "complete_mask_quest": true,
+                "fast_bunny_hood": false
+            }
+        },
+        "blue_fire_arrows": {
+            "on": {
+                "blue_fire_arrows": true
+            }
+        },
+        "owl_warps": {
+            "random": {
+                "owl_drops": true
+            }
+        },
+        "song_warps": {
+            "random": {
+                "warp_songs": true
+            }
+        },
+        "shuffle_beans": {
+            "on": {
+                "shuffle_beans": true
+            }
+        },
+        "expensive_merchants": {
+            "on": {
+                "shuffle_expensive_merchants": true
+            }
+        },
+        "beans_planted": {
+            "on": {
+                "plant_beans": true
+            }
+        },
+        "bombchus_in_logic": {
+            "on": {
+                "free_bombchu_drops": true
+            }
+        }
+    }
+}
