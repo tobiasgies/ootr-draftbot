@@ -21,9 +21,7 @@ class OotRandomizerClient(private val httpClient: OkHttpClient) : ConfigSource {
             throw RuntimeException("Failed to load data: $response")
         }
 
-        val body = response.body?.string()
-            ?: throw RuntimeException("Retrieved response body is empty")
-
+        val body = response.body.string()
         return parser(body)
     }
 
