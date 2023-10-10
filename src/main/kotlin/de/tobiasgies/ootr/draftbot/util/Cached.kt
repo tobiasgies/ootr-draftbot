@@ -19,7 +19,6 @@ class Cached<T>(
     private var _value: Any? = UNINITIALIZED_VALUE
 
     operator fun getValue(thisRef: Any, property: KProperty<*>): T {
-        val now = Instant.now()
         if (nextRetrieval.hasPassedNow()) {
             try {
                 _value = loader()
