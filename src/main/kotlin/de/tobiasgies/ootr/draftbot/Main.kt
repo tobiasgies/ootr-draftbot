@@ -15,6 +15,7 @@ fun main() {
     val dotenv = dotenv()
 
     val discordToken = dotenv["DISCORD_TOKEN"]!!
+    val ootrToken = dotenv["OOTR_TOKEN"]!!
 
     val httpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
@@ -25,7 +26,7 @@ fun main() {
                     .build()
             )
         }.build()
-    val configSource = OotRandomizerClient(httpClient)
+    val configSource = OotRandomizerClient(httpClient, ootrToken)
 
     val drafts = listOf(
         Season7QualifierDraft.Factory(configSource),
