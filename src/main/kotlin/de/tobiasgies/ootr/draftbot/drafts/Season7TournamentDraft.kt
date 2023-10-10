@@ -1,8 +1,8 @@
 package de.tobiasgies.ootr.draftbot.drafts
 
+import de.tobiasgies.ootr.draftbot.client.ConfigSource
 import de.tobiasgies.ootr.draftbot.data.DraftPool
-import de.tobiasgies.ootr.draftbot.data.DraftState
-import de.tobiasgies.ootr.draftbot.data.DraftStep
+import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
 import dev.minn.jda.ktx.events.onStringSelect
 import dev.minn.jda.ktx.interactions.components.StringSelectMenu
 import dev.minn.jda.ktx.interactions.components.button
@@ -15,13 +15,10 @@ import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionE
 import java.lang.Math.random
 import java.util.*
 
-// TODO: This is not multi-user capable yet and will break. Needs another layer of indirection (e.g. DraftFactory).
 class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
-    override val identifier = "s7_1v1"
-    override val friendlyName = "Season 7 Tournament, 1 vs 1 draft (2 bans, 2 major, 2 minor)"
-    private val draftState = DraftState(initialDraftPool)
+    private val draftState = Season7TournamentDraftState(initialDraftPool)
 
-    override suspend fun executeDraft(slashCommand: GenericCommandInteractionEvent) {
+    override suspend fun start(slashCommand: GenericCommandInteractionEvent) {
         val banFirstButton = slashCommand.jda.button(label = "I ban first", user = slashCommand.user) { button ->
             button.deferEdit().queue()
             draftState.userBansFirst()
@@ -61,8 +58,8 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
             content = "**__Step 2: Bans__**\n\n" +
                     "**Current draft state:**\n${draftState.display()}\n" +
                     "**Bannable settings:**\n" +
-                    "* **Major settings:** ${draftState.draftPool.major.keys.joinToString(", ")}\n" +
-                    "* **Minor settings:** ${draftState.draftPool.minor.keys.joinToString(", ")}\n\n" +
+                    "* **Major settings:** ${draftState.draftPool.major.keys.map { it.capitalize() }.joinToString(", ")}\n" +
+                    "* **Minor settings:** ${draftState.draftPool.minor.keys.map { it.capitalize() }.joinToString(", ")}\n\n" +
                     "Would you like to ban a major or minor setting?"
             components += row(banMajorButton, banMinorButton)
         }).queue()
@@ -73,7 +70,7 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
         previous.jda.onStringSelect("ban_setting_$selectUuid") { select ->
             select.deferEdit().queue()
             draftState.banSetting(select.values.first())
-            if (draftState.currentStep == DraftStep.BAN) {
+            if (draftState.currentStep == Step.BAN) {
                 // The bot hasn't banned yet.
                 executeBotBan()
                 executeBotPickMajor()
@@ -110,7 +107,7 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
             select.deferEdit().queue()
             val (draftable, optionName) = select.values.first().split('=')
             draftState.pickMajor(draftable, optionName)
-            if (draftState.currentStep == DraftStep.PICK_MAJOR) {
+            if (draftState.currentStep == Step.PICK_MAJOR) {
                 // The bot hasn't picked yet.
                 executeBotPickMajor()
                 executeBotPickMinor()
@@ -137,7 +134,7 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
             select.deferEdit().queue()
             val (draftable, optionName) = select.values.first().split('=')
             draftState.pickMinor(draftable, optionName)
-            if (draftState.currentStep == DraftStep.PICK_MINOR) {
+            if (draftState.currentStep == Step.PICK_MINOR) {
                 // The bot hasn't picked yet.
                 executeBotPickMinor()
             }
@@ -158,7 +155,7 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
     }
 
     private fun displayFinalDraft(previous: StringSelectInteractionEvent) {
-        if (draftState.currentStep != DraftStep.DONE) {
+        if (draftState.currentStep != Step.DONE) {
             throw IllegalStateException("Cannot display final draft before the draft is done")
         }
         previous.hook.deleteOriginal().queue()
@@ -167,6 +164,14 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
                 "${draftState.display()}\n" +
                 "Go to the [OOTRandomizer website](https://www.ootrandomizer.com/generatorDev), select the " +
                 "`S7 Tournament` preset, and change the settings as indicated above to roll your seed.").queue()
+    }
+
+    class Factory(private val configSource: ConfigSource) : DraftFactory<Season7TournamentDraft> {
+        override val identifier = "s7_1v1"
+        override val friendlyName = "Season 7 Tournament, 1 vs 1 draft (2 bans, 2 major, 2 minor)"
+        override fun createDraft(): Season7TournamentDraft {
+            return Season7TournamentDraft(configSource.draftPool)
+        }
     }
 
     companion object {

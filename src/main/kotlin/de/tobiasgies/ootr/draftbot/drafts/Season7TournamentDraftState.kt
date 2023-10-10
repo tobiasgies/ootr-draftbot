@@ -1,9 +1,12 @@
-package de.tobiasgies.ootr.draftbot.data
+package de.tobiasgies.ootr.draftbot.drafts
 
-class DraftState(initialDraftPool: DraftPool) {
+import de.tobiasgies.ootr.draftbot.data.DraftPool
+import de.tobiasgies.ootr.draftbot.data.DraftableOption
+
+class Season7TournamentDraftState(initialDraftPool: DraftPool) {
     var draftPool: DraftPool = initialDraftPool
         private set
-    var currentStep: DraftStep = DraftStep.PICK_ORDER
+    var currentStep: Step = Step.PICK_ORDER
         private set
     var userBansFirst: Boolean? = null
         private set
@@ -15,23 +18,23 @@ class DraftState(initialDraftPool: DraftPool) {
         private set
 
     fun userBansFirst() {
-        if (currentStep != DraftStep.PICK_ORDER) {
+        if (currentStep != Step.PICK_ORDER) {
             throw IllegalStateException("Cannot set ban order after the draft has started")
         }
         userBansFirst = true
-        currentStep = DraftStep.BAN
+        currentStep = Step.BAN
     }
 
     fun botBansFirst() {
-        if (currentStep != DraftStep.PICK_ORDER) {
+        if (currentStep != Step.PICK_ORDER) {
             throw IllegalStateException("Cannot set ban order after the draft has started")
         }
         userBansFirst = false
-        currentStep = DraftStep.BAN
+        currentStep = Step.BAN
     }
 
     fun banSetting(name: String) {
-        if (currentStep != DraftStep.BAN) {
+        if (currentStep != Step.BAN) {
             throw IllegalStateException("Cannot ban a setting before the ban step")
         }
         if (draftPool.major.containsKey(name)) {
@@ -44,12 +47,12 @@ class DraftState(initialDraftPool: DraftPool) {
             throw IllegalArgumentException("Unknown draftable setting: $name")
         }
         if (bans.size == 2) {
-            currentStep = DraftStep.PICK_MAJOR
+            currentStep = Step.PICK_MAJOR
         }
     }
 
     fun pickMajor(name: String, optionName: String) {
-        if (currentStep != DraftStep.PICK_MAJOR) {
+        if (currentStep != Step.PICK_MAJOR) {
             throw IllegalStateException("Cannot pick a major setting before the major pick step")
         }
         if (!draftPool.major.containsKey(name)) {
@@ -62,12 +65,12 @@ class DraftState(initialDraftPool: DraftPool) {
         draftPool = draftPool.without(name)
         majorPicks += name to option
         if (majorPicks.size == 2) {
-            currentStep = DraftStep.PICK_MINOR
+            currentStep = Step.PICK_MINOR
         }
     }
 
     fun pickMinor(name: String, optionName: String) {
-        if (currentStep != DraftStep.PICK_MINOR) {
+        if (currentStep != Step.PICK_MINOR) {
             throw IllegalStateException("Cannot pick a minor setting before the minor pick step")
         }
         if (!draftPool.minor.containsKey(name)) {
@@ -80,7 +83,7 @@ class DraftState(initialDraftPool: DraftPool) {
         draftPool = draftPool.without(name)
         minorPicks += name to option
         if (minorPicks.size == 2) {
-            currentStep = DraftStep.DONE
+            currentStep = Step.DONE
         }
     }
 
@@ -111,5 +114,13 @@ class DraftState(initialDraftPool: DraftPool) {
 
     override fun toString(): String {
         return "DraftState(draftPool=$draftPool, currentStep=$currentStep, userBansFirst=$userBansFirst, bans=$bans, majorPicks=$majorPicks, minorPicks=$minorPicks)"
+    }
+
+    enum class Step {
+        PICK_ORDER,
+        BAN,
+        PICK_MAJOR,
+        PICK_MINOR,
+        DONE,
     }
 }
