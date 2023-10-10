@@ -129,6 +129,6 @@ class OotRandomizerClient(
         private val DRAFT_POOL_ENDPOINT = "https://ootrandomizer.com/rtgg/draft_settings.json"
         private val SEED_ENDPOINT = "https://ootrandomizer.com/api/v2/seed/create"
         private val STATUS_ENDPOINT = "https://ootrandomizer.com/api/v2/seed/status"
-        private val VERSION_ENDPOINT = "https://ootrandomizer.com/api/v2/version?branch=dev"
+        private val VERSION_ENDPOINT = "https://ootrandomizer.com/api/version?branch=dev"
     }
 }

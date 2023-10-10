@@ -1,7 +1,9 @@
 package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.client.ConfigSource
+import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.DraftPool
+import de.tobiasgies.ootr.draftbot.data.Preset
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
 import dev.minn.jda.ktx.events.onStringSelect
 import dev.minn.jda.ktx.interactions.components.StringSelectMenu
@@ -9,14 +11,19 @@ import dev.minn.jda.ktx.interactions.components.button
 import dev.minn.jda.ktx.interactions.components.option
 import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEdit
+import mu.KLogging
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent
 import java.lang.Math.random
 import java.util.*
 
-class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
-    private val draftState = Season7TournamentDraftState(initialDraftPool)
+class Season7TournamentDraft(
+    initialDraftPool: DraftPool,
+    settingsPreset: Preset,
+    seedGenerator: SeedGenerator
+) : AbstractSeason7Draft(settingsPreset, seedGenerator) {
+    override val draftState = Season7TournamentDraftState(initialDraftPool)
 
     override suspend fun start(slashCommand: GenericCommandInteractionEvent) {
         val banFirstButton = slashCommand.jda.button(label = "I ban first", user = slashCommand.user) { button ->
@@ -154,27 +161,15 @@ class Season7TournamentDraft(initialDraftPool: DraftPool) : Draft {
         }).queue()
     }
 
-    private fun displayFinalDraft(previous: StringSelectInteractionEvent) {
-        if (draftState.currentStep != Step.DONE) {
-            throw IllegalStateException("Cannot display final draft before the draft is done")
-        }
-        previous.hook.deleteOriginal().queue()
-        previous.hook.sendMessage("**__Draft completed!__**\n\n" +
-                "${previous.user.asMention}, we drafted the following settings together:\n\n" +
-                "${draftState.display()}\n" +
-                "Go to the [OOTRandomizer website](https://www.ootrandomizer.com/generatorDev), select the " +
-                "`S7 Tournament` preset, and change the settings as indicated above to roll your seed.").queue()
-    }
-
-    class Factory(private val configSource: ConfigSource) : DraftFactory<Season7TournamentDraft> {
+    class Factory(private val configSource: ConfigSource, private val seedGenerator: SeedGenerator) : DraftFactory<Season7TournamentDraft> {
         override val identifier = "s7_1v1"
         override val friendlyName = "Season 7 Tournament, 1 vs 1 draft (2 bans, 2 major, 2 minor)"
         override fun createDraft(): Season7TournamentDraft {
-            return Season7TournamentDraft(configSource.draftPool)
+            return Season7TournamentDraft(configSource.draftPool, configSource.presets["S7 Tournament"]!!, seedGenerator)
         }
     }
 
-    companion object {
-        private val BAN_MINOR_CHANCE = 0.2
+    companion object : KLogging() {
+        private const val BAN_MINOR_CHANCE = 0.2
     }
 }

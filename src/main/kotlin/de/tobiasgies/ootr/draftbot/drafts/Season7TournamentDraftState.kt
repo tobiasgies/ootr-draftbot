@@ -88,7 +88,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         }
     }
 
-    fun display(): String {
+    override fun display(): String {
         return buildString {
             if (userBansFirst != null) {
                 val firstToBan = if (userBansFirst == true) "User" else "Bot"

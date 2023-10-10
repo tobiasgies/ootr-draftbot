@@ -26,11 +26,11 @@ fun main() {
                     .build()
             )
         }.build()
-    val configSource = OotRandomizerClient(httpClient, ootrToken)
+    val ootrClient = OotRandomizerClient(httpClient, ootrToken)
 
     val drafts = listOf(
-        Season7QualifierDraft.Factory(configSource),
-        Season7TournamentDraft.Factory(configSource),
+        Season7QualifierDraft.Factory(ootrClient, ootrClient),
+        Season7TournamentDraft.Factory(ootrClient, ootrClient),
     )
 
     val jda = light(token = discordToken, enableCoroutines = true)
@@ -44,13 +44,13 @@ fun main() {
     jda.onCommand(name = "draft") { event ->
         val type = event.getOption("type")!!.asString
 
-        val draft = drafts.find { it.identifier == type }
-        if (draft == null) {
+        val draftFactory = drafts.find { it.identifier == type }
+        if (draftFactory == null) {
             event.reply("Unknown draft type: $type").queue()
             return@onCommand
         }
 
         event.deferReply(true).queue()
-        draft.createDraft().start(slashCommand = event)
+        draftFactory.createDraft().start(slashCommand = event)
     }
 }
