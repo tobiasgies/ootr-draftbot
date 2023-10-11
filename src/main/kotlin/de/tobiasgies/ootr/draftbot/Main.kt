@@ -25,12 +25,6 @@ fun main() {
         options.tracesSampleRate = 1.0
     }
 
-    try {
-        throw Exception("This is a logback test")
-    } catch (e: Exception) {
-        KotlinLogging.logger("de.tobiasgies.ootr.draftbot.MainKt").error(e) { "This is a logback test" }
-    }
-
     val discordToken = dotenv["DISCORD_TOKEN"]!!
     val ootrToken = dotenv["OOTR_TOKEN"]!!
 
