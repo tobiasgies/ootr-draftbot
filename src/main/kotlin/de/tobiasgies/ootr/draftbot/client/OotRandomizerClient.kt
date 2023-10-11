@@ -12,6 +12,8 @@ import de.tobiasgies.ootr.draftbot.dto.SeedStatusResponse
 import de.tobiasgies.ootr.draftbot.dto.SeedStatusResponse.Status
 import de.tobiasgies.ootr.draftbot.dto.VersionResponse
 import de.tobiasgies.ootr.draftbot.util.cached
+import io.opentelemetry.instrumentation.annotations.SpanAttribute
+import io.opentelemetry.instrumentation.annotations.WithSpan
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -31,7 +33,8 @@ class OotRandomizerClient(
 ) : ConfigSource, SeedGenerator {
     private val om = ObjectMapper().registerKotlinModule()
 
-    private fun <T> fetch(url: String, parser: (String) -> T): T {
+    @WithSpan
+    private fun <T> fetch(@SpanAttribute url: String, parser: (String) -> T): T {
         val request = Request.Builder().url(url).build()
         val response = httpClient.newCall(request).execute()
 
@@ -68,7 +71,8 @@ class OotRandomizerClient(
 
     override suspend fun rollSeed(settings: Map<String, Any>) = doRollSeed(settings)
 
-    private suspend fun doRollSeed(settings: Map<String, Any>, retryCount: Int = 0): Seed {
+    @WithSpan
+    private suspend fun doRollSeed(@SpanAttribute settings: Map<String, Any>, @SpanAttribute retryCount: Int = 0): Seed {
         val url = SEED_ENDPOINT.toHttpUrl().newBuilder()
             .addQueryParameter("key", apiKey)
             .addQueryParameter("version", "dev_$latestDevVersion")
@@ -100,7 +104,8 @@ class OotRandomizerClient(
         }
     }
 
-    private suspend fun awaitSeedReady(seed: Seed) {
+    @WithSpan
+    private suspend fun awaitSeedReady(@SpanAttribute seed: Seed) {
         val url = STATUS_ENDPOINT.toHttpUrl().newBuilder()
             .addQueryParameter("key", apiKey)
             .addQueryParameter("id", seed.id)

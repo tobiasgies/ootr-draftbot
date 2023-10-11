@@ -5,6 +5,7 @@ import de.tobiasgies.ootr.draftbot.data.Preset
 import dev.minn.jda.ktx.interactions.components.button
 import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEdit
+import io.opentelemetry.instrumentation.annotations.WithSpan
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.interactions.callbacks.IDeferrableCallback
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle
@@ -15,6 +16,7 @@ abstract class AbstractSeason7Draft(
 ) : Draft {
     protected abstract val draftState: DraftResult
 
+    @WithSpan
     protected fun displayFinalDraft(previous: IDeferrableCallback) {
         if (!draftState.isComplete) {
             throw IllegalStateException("Cannot display draft result before the draft is complete")
@@ -44,6 +46,7 @@ abstract class AbstractSeason7Draft(
         }).queue()
     }
 
+    @WithSpan
     private suspend fun rollSeedAndDisplay(previous: ButtonInteractionEvent) {
         previous.hook.editOriginal(MessageEdit { content = "Rolling seed..." }).queue()
         previous.hook.editOriginalComponents(emptyList()).queue()
@@ -68,6 +71,7 @@ abstract class AbstractSeason7Draft(
         }
     }
 
+    @WithSpan
     private fun cancelDraftAndDisplay(previous: ButtonInteractionEvent) {
         previous.hook.editOriginal(MessageEdit {
             content = "**__Draft cancelled__**\n\n" +

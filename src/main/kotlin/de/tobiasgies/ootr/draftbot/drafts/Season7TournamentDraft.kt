@@ -11,6 +11,8 @@ import dev.minn.jda.ktx.interactions.components.button
 import dev.minn.jda.ktx.interactions.components.option
 import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEdit
+import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.instrumentation.annotations.WithSpan
 import mu.KLogging
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
@@ -25,6 +27,7 @@ class Season7TournamentDraft(
 ) : AbstractSeason7Draft(settingsPreset, seedGenerator) {
     override val draftState = Season7TournamentDraftState(initialDraftPool)
 
+    @WithSpan(kind = SpanKind.SERVER)
     override suspend fun start(slashCommand: GenericCommandInteractionEvent) {
         val banFirstButton = slashCommand.jda.button(label = "I ban first", user = slashCommand.user) { button ->
             button.deferEdit().queue()
@@ -44,6 +47,7 @@ class Season7TournamentDraft(
         }).queue()
     }
 
+    @WithSpan
     private fun executeBotBan() {
         if (random() < BAN_MINOR_CHANCE) {
             draftState.banSetting(draftState.draftPool.minor.keys.random())
@@ -52,6 +56,7 @@ class Season7TournamentDraft(
         }
     }
 
+    @WithSpan
     private fun displayBanMajorMinor(previous: ButtonInteractionEvent) {
         val banMajorButton = previous.jda.button(label = "Major setting", user = previous.user) { button ->
             button.deferEdit().queue()
@@ -72,6 +77,7 @@ class Season7TournamentDraft(
         }).queue()
     }
 
+    @WithSpan
     private fun displayBanSelection(previous: ButtonInteractionEvent, type: String, bannableSettings: Set<String>) {
         val selectUuid = UUID.randomUUID()
         previous.jda.onStringSelect("ban_setting_$selectUuid") { select ->
@@ -94,6 +100,7 @@ class Season7TournamentDraft(
         }).queue()
     }
 
+    @WithSpan
     private fun executeBotPickMajor() {
         val draftable = draftState.draftPool.major.entries.random()
         val draftableOption = draftable.value.options.keys.random()
@@ -101,6 +108,7 @@ class Season7TournamentDraft(
         draftState.pickMajor(draftable.key, draftableOption)
     }
 
+    @WithSpan
     private fun executeBotPickMinor() {
         val draftable = draftState.draftPool.minor.entries.random()
         val draftableOption = draftable.value.options.keys.random()
@@ -108,6 +116,7 @@ class Season7TournamentDraft(
         draftState.pickMinor(draftable.key, draftableOption)
     }
 
+    @WithSpan
     private fun displayMajorPickSelection(previous: StringSelectInteractionEvent) {
         val selectUuid = UUID.randomUUID()
         previous.jda.onStringSelect("pick_major_setting_$selectUuid") { select ->
@@ -135,6 +144,7 @@ class Season7TournamentDraft(
         }).queue()
     }
 
+    @WithSpan
     private fun displayMinorPickSelection(previous: StringSelectInteractionEvent) {
         val selectUuid = UUID.randomUUID()
         previous.jda.onStringSelect("pick_minor_setting_$selectUuid") { select ->

@@ -4,6 +4,8 @@ import de.tobiasgies.ootr.draftbot.client.ConfigSource
 import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.Preset
+import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.instrumentation.annotations.WithSpan
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
 
 class Season7QualifierDraft(
@@ -12,6 +14,8 @@ class Season7QualifierDraft(
     seedGenerator: SeedGenerator
 ) : AbstractSeason7Draft(settingsPreset, seedGenerator) {
     override val draftState = Season7QualifierDraftState.randomize(draftPool)
+
+    @WithSpan(kind = SpanKind.SERVER)
     override suspend fun start(slashCommand: GenericCommandInteractionEvent) {
         displayFinalDraft(slashCommand)
     }

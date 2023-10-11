@@ -2,6 +2,7 @@ package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
+import io.opentelemetry.instrumentation.annotations.WithSpan
 
 class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
     var draftPool: DraftPool = initialDraftPool
@@ -21,6 +22,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
     private var majorPicks: Map<String, DraftableOption> = mapOf()
     private var minorPicks: Map<String, DraftableOption> = mapOf()
 
+    @WithSpan
     fun userBansFirst() {
         if (currentStep != Step.PICK_ORDER) {
             throw IllegalStateException("Cannot set ban order after the draft has started")
@@ -29,6 +31,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         currentStep = Step.BAN
     }
 
+    @WithSpan
     fun botBansFirst() {
         if (currentStep != Step.PICK_ORDER) {
             throw IllegalStateException("Cannot set ban order after the draft has started")
@@ -37,6 +40,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         currentStep = Step.BAN
     }
 
+    @WithSpan
     fun banSetting(name: String) {
         if (currentStep != Step.BAN) {
             throw IllegalStateException("Cannot ban a setting before the ban step")
@@ -52,6 +56,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         }
     }
 
+    @WithSpan
     fun pickMajor(name: String, optionName: String) {
         if (currentStep != Step.PICK_MAJOR) {
             throw IllegalStateException("Cannot pick a major setting before the major pick step")
@@ -70,6 +75,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         }
     }
 
+    @WithSpan
     fun pickMinor(name: String, optionName: String) {
         if (currentStep != Step.PICK_MINOR) {
             throw IllegalStateException("Cannot pick a minor setting before the minor pick step")

@@ -1,4 +1,5 @@
 .env
+opentelemetry-javaagent.jar
 
 .gradle
 build/

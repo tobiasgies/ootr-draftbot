@@ -2,6 +2,7 @@ package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
+import io.opentelemetry.instrumentation.annotations.WithSpan
 
 class Season7QualifierDraftState(
     private val majorPick: String,
@@ -21,6 +22,7 @@ class Season7QualifierDraftState(
     }
 
     companion object {
+        @WithSpan
         fun randomize(draftPool: DraftPool): Season7QualifierDraftState {
             val majorPick = draftPool.major.entries.random().value
             val majorOption = majorPick.options.entries.random().value
