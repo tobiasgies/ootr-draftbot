@@ -10,8 +10,6 @@ import dev.minn.jda.ktx.interactions.commands.upsertCommand
 import dev.minn.jda.ktx.jdabuilder.light
 import io.github.cdimascio.dotenv.dotenv
 import io.sentry.Sentry
-import mu.KLogger
-import mu.KotlinLogging
 import okhttp3.OkHttpClient
 
 fun main() {
