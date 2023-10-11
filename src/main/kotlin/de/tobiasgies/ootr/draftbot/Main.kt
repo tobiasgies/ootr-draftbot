@@ -9,7 +9,6 @@ import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.upsertCommand
 import dev.minn.jda.ktx.jdabuilder.light
 import io.github.cdimascio.dotenv.dotenv
-import io.opentelemetry.instrumentation.annotations.WithSpan
 import okhttp3.OkHttpClient
 
 fun main() {
