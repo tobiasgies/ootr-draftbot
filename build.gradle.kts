@@ -32,6 +32,8 @@ dependencies {
     implementation("org.slf4j:slf4j-api:2.0.9")
     implementation("ch.qos.logback:logback-classic:1.4.11")
     implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
+    implementation("io.micrometer:micrometer-core:1.11.5")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-micrometer-1.5:1.30.0-alpha")
     implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:1.30.0")
     implementation("io.opentelemetry:opentelemetry-extension-kotlin:1.31.0")
 }
