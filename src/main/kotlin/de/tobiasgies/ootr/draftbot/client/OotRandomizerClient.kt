@@ -14,6 +14,8 @@ import de.tobiasgies.ootr.draftbot.dto.VersionResponse
 import de.tobiasgies.ootr.draftbot.util.cached
 import de.tobiasgies.ootr.draftbot.util.executeAsync
 import de.tobiasgies.ootr.draftbot.util.withOtelContext
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Metrics
 import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.SpanAttribute
 import io.opentelemetry.instrumentation.annotations.WithSpan
@@ -28,7 +30,8 @@ import kotlin.time.Duration.Companion.seconds
 
 class OotRandomizerClient(
     private val httpClient: OkHttpClient,
-    private val apiKey: String
+    private val apiKey: String,
+    private val meterRegistry: MeterRegistry = Metrics.globalRegistry
 ) : ConfigSource, SeedGenerator {
     private val om = ObjectMapper().registerKotlinModule()
 
@@ -108,6 +111,7 @@ class OotRandomizerClient(
     @WithSpan
     private suspend fun awaitSeedReady(@SpanAttribute seed: Seed) {
         val otelContext = Context.current()
+        delay(3.seconds)
         val url = STATUS_ENDPOINT.toHttpUrl().newBuilder()
             .addQueryParameter("id", seed.id)
             .addQueryParameter("key", apiKey)
@@ -126,7 +130,6 @@ class OotRandomizerClient(
             throw RuntimeException("Seed ${seed.id} failed to generate: $response")
         }
         if (body.status == Status.PENDING) {
-            delay(3.seconds)
             awaitSeedReady(seed)
         }
     }

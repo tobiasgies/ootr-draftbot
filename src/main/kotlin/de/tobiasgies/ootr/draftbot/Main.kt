@@ -11,32 +11,37 @@ import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.upsertCommand
 import dev.minn.jda.ktx.jdabuilder.light
 import io.github.cdimascio.dotenv.dotenv
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Metrics
+import io.micrometer.core.instrument.Tags
+import io.micrometer.core.instrument.binder.okhttp3.OkHttpMetricsEventListener
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import io.opentelemetry.api.GlobalOpenTelemetry
 import mu.KotlinLogging
 import net.dv8tion.jda.api.JDA
 import okhttp3.OkHttpClient
 
 fun main() {
     val dotenv = dotenv()
-    setupMeterRegistry()
+    val meterRegistry = setupMeterRegistry()
 
     val discordToken = dotenv["DISCORD_TOKEN"]!!
     val ootrToken = dotenv["OOTR_TOKEN"]!!
 
-    val httpClient = buildHttpClient()
-    val ootrClient = OotRandomizerClient(httpClient, ootrToken)
+    val httpClient = buildHttpClient(meterRegistry)
+    val ootrClient = OotRandomizerClient(httpClient, ootrToken, meterRegistry)
 
     val drafts = listOf(
-        Season7QualifierDraft.Factory(ootrClient, ootrClient),
-        Season7TournamentDraft.Factory(ootrClient, ootrClient),
+        Season7QualifierDraft.Factory(ootrClient, ootrClient, meterRegistry),
+        Season7TournamentDraft.Factory(ootrClient, ootrClient, meterRegistry),
     )
 
     val jda = light(token = discordToken, enableCoroutines = true)
-    setupJda(jda, drafts)
+    setupJda(jda, drafts, meterRegistry)
 }
 
-private fun setupMeterRegistry() {
+private fun setupMeterRegistry(): MeterRegistry {
     val logger = KotlinLogging.logger {}
     if (Metrics.globalRegistry.registries.isEmpty()) {
         logger.warn {
@@ -45,11 +50,13 @@ private fun setupMeterRegistry() {
         }
         Metrics.globalRegistry.add(SimpleMeterRegistry())
     }
+    return Metrics.globalRegistry
 }
 
 private fun setupJda(
     jda: JDA,
-    drafts: List<DraftFactory<out Draft>>
+    drafts: List<DraftFactory<out Draft>>,
+    meterRegistry: MeterRegistry = Metrics.globalRegistry
 ) {
     jda.upsertCommand("draft", "Start a tournament-style settings draft") {
         option<String>("type", "The draft type to simulate") {
@@ -57,21 +64,36 @@ private fun setupJda(
         }
     }.queue()
 
-    jda.onCommand(name = "draft") draftCommandHandler@{ event ->
-        val type = event.getOption("type")!!.asString
+    jda.onCommand(name = "draft") onDraftCommand@{ event ->
+        val span = GlobalOpenTelemetry.getTracer("ootr-draftbot")
+            .spanBuilder("onDraftCommand")
+            .setSpanKind(io.opentelemetry.api.trace.SpanKind.SERVER)
+            .startSpan()
+        try {
+            val type = event.getOption("type")!!.asString
+            meterRegistry.counter("draftbot.drafts.started", "type", type).increment()
 
-        val draftFactory = drafts.find { it.identifier == type }
-        if (draftFactory == null) {
-            event.reply("Unknown draft type: $type").queue()
-            return@draftCommandHandler
+            val draftFactory = drafts.find { it.identifier == type }
+            if (draftFactory == null) {
+                meterRegistry.counter("draftbot.drafts.failed", "reason", "unknown_type").increment()
+                event.reply("Unknown draft type: $type").queue()
+                return@onDraftCommand
+            }
+
+            event.deferReply(true).queue()
+            draftFactory.createDraft().start(slashCommand = event)
+        } finally {
+            span.end()
         }
-
-        event.deferReply(true).queue()
-        draftFactory.createDraft().start(slashCommand = event)
     }
 }
 
-private fun buildHttpClient() = OkHttpClient.Builder()
+private fun buildHttpClient(meterRegistry: MeterRegistry = Metrics.globalRegistry) = OkHttpClient.Builder()
+    .eventListener(
+        OkHttpMetricsEventListener.builder(meterRegistry, "okhttp.requests")
+            .uriMapper { req -> req.url.newBuilder().query(null).fragment(null).build().toString() }
+            .tags(Tags.of("scope", "ootr_client"))
+            .build())
     .addInterceptor { chain ->
         chain.proceed(
             chain.request()

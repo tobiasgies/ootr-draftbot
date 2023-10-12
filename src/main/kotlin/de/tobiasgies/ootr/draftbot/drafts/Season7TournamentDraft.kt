@@ -3,6 +3,7 @@ package de.tobiasgies.ootr.draftbot.drafts
 import de.tobiasgies.ootr.draftbot.client.ConfigSource
 import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.DraftPool
+import de.tobiasgies.ootr.draftbot.data.Draftable
 import de.tobiasgies.ootr.draftbot.data.Preset
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
 import de.tobiasgies.ootr.draftbot.util.withOtelContext
@@ -12,7 +13,8 @@ import dev.minn.jda.ktx.interactions.components.button
 import dev.minn.jda.ktx.interactions.components.option
 import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEdit
-import io.opentelemetry.api.trace.SpanKind
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Metrics
 import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.WithSpan
 import mu.KLogging
@@ -25,17 +27,19 @@ import java.util.*
 class Season7TournamentDraft(
     initialDraftPool: DraftPool,
     settingsPreset: Preset,
-    seedGenerator: SeedGenerator
-) : AbstractSeason7Draft(settingsPreset, seedGenerator) {
+    seedGenerator: SeedGenerator,
+    meterRegistry: MeterRegistry = Metrics.globalRegistry
+) : AbstractSeason7Draft(settingsPreset, seedGenerator, Season7TournamentDraft::class, meterRegistry) {
     override val draftState = Season7TournamentDraftState(initialDraftPool)
 
-    @WithSpan(kind = SpanKind.SERVER)
+    @WithSpan
     override suspend fun start(slashCommand: GenericCommandInteractionEvent) {
         val otelContext = Context.current()
         val banFirstButton = slashCommand.jda.button(label = "I ban first", user = slashCommand.user) { button ->
             withOtelContext(otelContext) {
                 button.deferEdit().queue()
                 draftState.userBansFirst()
+                meterRegistry.countPickingOrder("user")
                 displayBanMajorMinor(button)
             }
         }
@@ -43,6 +47,7 @@ class Season7TournamentDraft(
             withOtelContext(otelContext) {
                 button.deferEdit().queue()
                 draftState.botBansFirst()
+                meterRegistry.countPickingOrder("bot")
                 executeBotBan()
                 displayBanMajorMinor(button)
             }
@@ -88,6 +93,7 @@ class Season7TournamentDraft(
             withOtelContext(otelContext) {
                 select.deferEdit().queue()
                 draftState.banSetting(select.values.first())
+                meterRegistry.countBan(select.values.first(), type, "user")
                 if (draftState.currentStep == Step.BAN) {
                     // The bot hasn't banned yet.
                     executeBotBan()
@@ -115,6 +121,7 @@ class Season7TournamentDraft(
                 select.deferEdit().queue()
                 val (draftable, optionName) = select.values.first().split('=')
                 draftState.pickMajor(draftable, optionName)
+                meterRegistry.countPick(select.values.first(), "major", "user")
                 if (draftState.currentStep == Step.PICK_MAJOR) {
                     // The bot hasn't picked yet.
                     executeBotPickMajor()
@@ -146,6 +153,7 @@ class Season7TournamentDraft(
                 select.deferEdit().queue()
                 val (draftable, optionName) = select.values.first().split('=')
                 draftState.pickMinor(draftable, optionName)
+                meterRegistry.countPick(select.values.first(), "minor", "user")
                 if (draftState.currentStep == Step.PICK_MINOR) {
                     // The bot hasn't picked yet.
                     executeBotPickMinor()
@@ -160,7 +168,10 @@ class Season7TournamentDraft(
             components += row(StringSelectMenu("pick_minor_setting_$selectUuid", "Pick a setting") {
                 draftState.draftPool.minor.forEach { draftable ->
                     draftable.value.options.forEach {
-                        option("${draftable.key.capitalize()}: ${it.key.capitalize()}", "${draftable.key}=${it.key}")
+                        option(
+                            "${draftable.key.capitalize()}: ${it.key.capitalize()}",
+                            draftChoiceValue(draftable.value, it.key)
+                        )
                     }
                 }
             })
@@ -170,9 +181,13 @@ class Season7TournamentDraft(
     @WithSpan
     private fun executeBotBan() {
         if (random() < BAN_MINOR_CHANCE) {
-            draftState.banSetting(draftState.draftPool.minor.keys.random())
+            val setting = draftState.draftPool.minor.keys.random()
+            draftState.banSetting(setting)
+            meterRegistry.countBan(setting, "minor", "bot")
         } else {
-            draftState.banSetting(draftState.draftPool.major.keys.random())
+            val setting = draftState.draftPool.major.keys.random()
+            draftState.banSetting(setting)
+            meterRegistry.countBan(setting, "major", "bot")
         }
     }
 
@@ -182,6 +197,7 @@ class Season7TournamentDraft(
         val draftableOption = draftable.value.options.keys.random()
 
         draftState.pickMajor(draftable.key, draftableOption)
+        meterRegistry.countPick(draftChoiceValue(draftable.value, draftableOption), "major","bot")
     }
 
     @WithSpan
@@ -190,13 +206,62 @@ class Season7TournamentDraft(
         val draftableOption = draftable.value.options.keys.random()
 
         draftState.pickMinor(draftable.key, draftableOption)
+        meterRegistry.countPick(draftChoiceValue(draftable.value, draftableOption), "minor","bot")
     }
 
-    class Factory(private val configSource: ConfigSource, private val seedGenerator: SeedGenerator) : DraftFactory<Season7TournamentDraft> {
-        override val identifier = "s7_1v1"
+    private fun draftChoiceValue(draftable: Draftable, optionName: String) = "${draftable.name}=$optionName"
+
+    private fun MeterRegistry.countPickingOrder(firstPick: String) {
+        counter(
+            "draftbot.drafts.picking_order",
+            "draft_type",
+            Season7TournamentDraft::class.simpleName,
+            "first_pick",
+            firstPick
+        ).increment()
+    }
+    private fun MeterRegistry.countPick(setting: String, settingType: String, pickedBy: String) {
+        counter(
+            "draftbot.drafts.picked_setting",
+            "type",
+            Season7TournamentDraft::class.simpleName,
+            "setting",
+            setting,
+            "setting_type",
+            settingType,
+            "picked_by",
+            pickedBy,
+        ).increment()
+    }
+
+    private fun MeterRegistry.countBan(setting: String, settingType: String, bannedBy: String) {
+        counter(
+            "draftbot.drafts.banned_setting",
+            "type",
+            Season7TournamentDraft::class.simpleName,
+            "setting",
+            setting,
+            "setting_type",
+            settingType,
+            "banned_by",
+            bannedBy,
+        ).increment()
+    }
+
+    class Factory(
+        private val configSource: ConfigSource,
+        private val seedGenerator: SeedGenerator,
+        private val meterRegistry: MeterRegistry = Metrics.globalRegistry
+    ) : DraftFactory<Season7TournamentDraft> {
+        override val identifier = Season7TournamentDraft::class.simpleName!!
         override val friendlyName = "Season 7 Tournament, 1 vs 1 draft (2 bans, 2 major, 2 minor)"
         override fun createDraft(): Season7TournamentDraft {
-            return Season7TournamentDraft(configSource.draftPool, configSource.presets["S7 Tournament"]!!, seedGenerator)
+            return Season7TournamentDraft(
+                configSource.draftPool,
+                configSource.presets["S7 Tournament"]!!,
+                seedGenerator,
+                meterRegistry
+            )
         }
     }
 
