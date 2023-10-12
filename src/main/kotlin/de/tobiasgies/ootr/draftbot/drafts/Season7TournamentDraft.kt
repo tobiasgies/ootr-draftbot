@@ -5,6 +5,7 @@ import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.Preset
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
+import de.tobiasgies.ootr.draftbot.util.withOtelContext
 import dev.minn.jda.ktx.events.onStringSelect
 import dev.minn.jda.ktx.interactions.components.StringSelectMenu
 import dev.minn.jda.ktx.interactions.components.button
@@ -12,6 +13,7 @@ import dev.minn.jda.ktx.interactions.components.option
 import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEdit
 import io.opentelemetry.api.trace.SpanKind
+import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.WithSpan
 import mu.KLogging
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
@@ -29,16 +31,21 @@ class Season7TournamentDraft(
 
     @WithSpan(kind = SpanKind.SERVER)
     override suspend fun start(slashCommand: GenericCommandInteractionEvent) {
+        val otelContext = Context.current()
         val banFirstButton = slashCommand.jda.button(label = "I ban first", user = slashCommand.user) { button ->
-            button.deferEdit().queue()
-            draftState.userBansFirst()
-            displayBanMajorMinor(button)
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                draftState.userBansFirst()
+                displayBanMajorMinor(button)
+            }
         }
         val banSecondButton = slashCommand.jda.button(label = "Bot bans first", user = slashCommand.user) { button ->
-            button.deferEdit().queue()
-            draftState.botBansFirst()
-            executeBotBan()
-            displayBanMajorMinor(button)
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                draftState.botBansFirst()
+                executeBotBan()
+                displayBanMajorMinor(button)
+            }
         }
         slashCommand.hook.editOriginal(MessageEdit {
             content = "**__Step 1: Picking order__**\n\n" +
@@ -48,23 +55,19 @@ class Season7TournamentDraft(
     }
 
     @WithSpan
-    private fun executeBotBan() {
-        if (random() < BAN_MINOR_CHANCE) {
-            draftState.banSetting(draftState.draftPool.minor.keys.random())
-        } else {
-            draftState.banSetting(draftState.draftPool.major.keys.random())
-        }
-    }
-
-    @WithSpan
-    private fun displayBanMajorMinor(previous: ButtonInteractionEvent) {
+    private suspend fun displayBanMajorMinor(previous: ButtonInteractionEvent) {
+        val otelContext = Context.current()
         val banMajorButton = previous.jda.button(label = "Major setting", user = previous.user) { button ->
-            button.deferEdit().queue()
-            displayBanSelection(button, "major", draftState.draftPool.major.keys)
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                displayBanSelection(button, "major", draftState.draftPool.major.keys)
+            }
         }
         val banMinorButton = previous.jda.button(label = "Minor setting", user = previous.user) { button ->
-            button.deferEdit().queue()
-            displayBanSelection(button, "minor", draftState.draftPool.minor.keys)
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                displayBanSelection(button, "minor", draftState.draftPool.minor.keys)
+            }
         }
         previous.hook.editOriginal(MessageEdit {
             content = "**__Step 2: Bans__**\n\n" +
@@ -78,17 +81,20 @@ class Season7TournamentDraft(
     }
 
     @WithSpan
-    private fun displayBanSelection(previous: ButtonInteractionEvent, type: String, bannableSettings: Set<String>) {
+    private suspend fun displayBanSelection(previous: ButtonInteractionEvent, type: String, bannableSettings: Set<String>) {
+        val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
         previous.jda.onStringSelect("ban_setting_$selectUuid") { select ->
-            select.deferEdit().queue()
-            draftState.banSetting(select.values.first())
-            if (draftState.currentStep == Step.BAN) {
-                // The bot hasn't banned yet.
-                executeBotBan()
-                executeBotPickMajor()
+            withOtelContext(otelContext) {
+                select.deferEdit().queue()
+                draftState.banSetting(select.values.first())
+                if (draftState.currentStep == Step.BAN) {
+                    // The bot hasn't banned yet.
+                    executeBotBan()
+                    executeBotPickMajor()
+                }
+                displayMajorPickSelection(select)
             }
-            displayMajorPickSelection(select)
         }
         previous.hook.editOriginal(MessageEdit {
             content = "**__Step 2: Bans__**\n\n" +
@@ -101,34 +107,21 @@ class Season7TournamentDraft(
     }
 
     @WithSpan
-    private fun executeBotPickMajor() {
-        val draftable = draftState.draftPool.major.entries.random()
-        val draftableOption = draftable.value.options.keys.random()
-
-        draftState.pickMajor(draftable.key, draftableOption)
-    }
-
-    @WithSpan
-    private fun executeBotPickMinor() {
-        val draftable = draftState.draftPool.minor.entries.random()
-        val draftableOption = draftable.value.options.keys.random()
-
-        draftState.pickMinor(draftable.key, draftableOption)
-    }
-
-    @WithSpan
-    private fun displayMajorPickSelection(previous: StringSelectInteractionEvent) {
+    private suspend fun displayMajorPickSelection(previous: StringSelectInteractionEvent) {
+        val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
         previous.jda.onStringSelect("pick_major_setting_$selectUuid") { select ->
-            select.deferEdit().queue()
-            val (draftable, optionName) = select.values.first().split('=')
-            draftState.pickMajor(draftable, optionName)
-            if (draftState.currentStep == Step.PICK_MAJOR) {
-                // The bot hasn't picked yet.
-                executeBotPickMajor()
-                executeBotPickMinor()
+            withOtelContext(otelContext) {
+                select.deferEdit().queue()
+                val (draftable, optionName) = select.values.first().split('=')
+                draftState.pickMajor(draftable, optionName)
+                if (draftState.currentStep == Step.PICK_MAJOR) {
+                    // The bot hasn't picked yet.
+                    executeBotPickMajor()
+                    executeBotPickMinor()
+                }
+                displayMinorPickSelection(select)
             }
-            displayMinorPickSelection(select)
         }
         previous.hook.editOriginal(MessageEdit {
             content = "**__Step 3: Major pick__**\n\n" +
@@ -145,17 +138,20 @@ class Season7TournamentDraft(
     }
 
     @WithSpan
-    private fun displayMinorPickSelection(previous: StringSelectInteractionEvent) {
+    private suspend fun displayMinorPickSelection(previous: StringSelectInteractionEvent) {
+        val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
         previous.jda.onStringSelect("pick_minor_setting_$selectUuid") { select ->
-            select.deferEdit().queue()
-            val (draftable, optionName) = select.values.first().split('=')
-            draftState.pickMinor(draftable, optionName)
-            if (draftState.currentStep == Step.PICK_MINOR) {
-                // The bot hasn't picked yet.
-                executeBotPickMinor()
+            withOtelContext(otelContext) {
+                select.deferEdit().queue()
+                val (draftable, optionName) = select.values.first().split('=')
+                draftState.pickMinor(draftable, optionName)
+                if (draftState.currentStep == Step.PICK_MINOR) {
+                    // The bot hasn't picked yet.
+                    executeBotPickMinor()
+                }
+                displayFinalDraft(select)
             }
-            displayFinalDraft(select)
         }
         previous.hook.editOriginal(MessageEdit {
             content = "**__Step 4: Minor pick__**\n\n" +
@@ -169,6 +165,31 @@ class Season7TournamentDraft(
                 }
             })
         }).queue()
+    }
+
+    @WithSpan
+    private fun executeBotBan() {
+        if (random() < BAN_MINOR_CHANCE) {
+            draftState.banSetting(draftState.draftPool.minor.keys.random())
+        } else {
+            draftState.banSetting(draftState.draftPool.major.keys.random())
+        }
+    }
+
+    @WithSpan
+    private fun executeBotPickMajor() {
+        val draftable = draftState.draftPool.major.entries.random()
+        val draftableOption = draftable.value.options.keys.random()
+
+        draftState.pickMajor(draftable.key, draftableOption)
+    }
+
+    @WithSpan
+    private fun executeBotPickMinor() {
+        val draftable = draftState.draftPool.minor.entries.random()
+        val draftableOption = draftable.value.options.keys.random()
+
+        draftState.pickMinor(draftable.key, draftableOption)
     }
 
     class Factory(private val configSource: ConfigSource, private val seedGenerator: SeedGenerator) : DraftFactory<Season7TournamentDraft> {

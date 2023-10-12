@@ -12,19 +12,18 @@ import de.tobiasgies.ootr.draftbot.dto.SeedStatusResponse
 import de.tobiasgies.ootr.draftbot.dto.SeedStatusResponse.Status
 import de.tobiasgies.ootr.draftbot.dto.VersionResponse
 import de.tobiasgies.ootr.draftbot.util.cached
+import de.tobiasgies.ootr.draftbot.util.executeAsync
+import de.tobiasgies.ootr.draftbot.util.withOtelContext
+import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.SpanAttribute
 import io.opentelemetry.instrumentation.annotations.WithSpan
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import mu.KLogging
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.executeAsync
-import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 class OotRandomizerClient(
@@ -42,7 +41,7 @@ class OotRandomizerClient(
             throw RuntimeException("Failed to load data: $response")
         }
 
-        val body = response.body.string()
+        val body = response.body!!.string()
         return parser(body)
     }
 
@@ -69,26 +68,28 @@ class OotRandomizerClient(
         fetch(VERSION_ENDPOINT, parser).currentlyActiveVersion
     }
 
+    @WithSpan
     override suspend fun rollSeed(settings: Map<String, Any>) = doRollSeed(settings)
 
     @WithSpan
     private suspend fun doRollSeed(@SpanAttribute settings: Map<String, Any>, @SpanAttribute retryCount: Int = 0): Seed {
+        val otelContext = Context.current()
         val url = SEED_ENDPOINT.toHttpUrl().newBuilder()
-            .addQueryParameter("key", apiKey)
             .addQueryParameter("version", "dev_$latestDevVersion")
+            .addQueryParameter("key", apiKey)
             .build()
         val request = Request.Builder()
             .url(url)
             .post(om.writeValueAsString(settings).toRequestBody(contentType = "application/json".toMediaType()))
             .build()
         try {
-            val response = withContext(coroutineContext + Dispatchers.IO) {
+            val response = withOtelContext(otelContext) {
                 httpClient.newCall(request).executeAsync()
             }
             if (!response.isSuccessful) {
                 throw RuntimeException("Request for a seed was not successful: $response")
             }
-            val body = om.readValue(response.body.string(), CreateSeedResponse::class.java)
+            val body = om.readValue(response.body!!.string(), CreateSeedResponse::class.java)
             val seed = Seed(body.id)
             awaitSeedReady(seed)
             return seed
@@ -106,25 +107,26 @@ class OotRandomizerClient(
 
     @WithSpan
     private suspend fun awaitSeedReady(@SpanAttribute seed: Seed) {
+        val otelContext = Context.current()
         val url = STATUS_ENDPOINT.toHttpUrl().newBuilder()
-            .addQueryParameter("key", apiKey)
             .addQueryParameter("id", seed.id)
+            .addQueryParameter("key", apiKey)
             .build()
         val request = Request.Builder().url(url).build()
 
         // This method is called from inside a try block, hence no need for separate error handling
-        val response = withContext(coroutineContext + Dispatchers.IO) {
+        val response = withOtelContext(otelContext) {
             httpClient.newCall(request).executeAsync()
         }
         if (!response.isSuccessful) {
             throw RuntimeException("Request for seed ${seed.id} status was not successful: $response")
         }
-        val body = om.readValue(response.body.string(), SeedStatusResponse::class.java)
+        val body = om.readValue(response.body!!.string(), SeedStatusResponse::class.java)
         if (body.status == Status.FAILED) {
             throw RuntimeException("Seed ${seed.id} failed to generate: $response")
         }
         if (body.status == Status.PENDING) {
-            delay(2.seconds)
+            delay(3.seconds)
             awaitSeedReady(seed)
         }
     }

@@ -2,14 +2,12 @@ package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
-import io.opentelemetry.instrumentation.annotations.SpanAttribute
-import io.opentelemetry.instrumentation.annotations.WithSpan
 
-class Season7QualifierDraftState @WithSpan constructor(
-    @SpanAttribute val majorPick: String,
-    @SpanAttribute val majorOption: DraftableOption,
-    @SpanAttribute val minorPick: String,
-    @SpanAttribute val minorOption: DraftableOption,
+class Season7QualifierDraftState(
+    val majorPick: String,
+    val majorOption: DraftableOption,
+    val minorPick: String,
+    val minorOption: DraftableOption,
 ) : DraftResult {
     override val isComplete = true
     override val selectedSettings = mapOf(
@@ -20,6 +18,10 @@ class Season7QualifierDraftState @WithSpan constructor(
     override fun display() = buildString {
         appendLine("* **Major pick:** ${majorPick.capitalize()}: ${majorOption.name.capitalize()}")
         appendLine("* **Minor pick:** ${minorPick.capitalize()}: ${minorOption.name.capitalize()}")
+    }
+
+    override fun toString(): String {
+        return "Season7QualifierDraftState(isComplete=$isComplete, selectedSettings=$selectedSettings)"
     }
 
     companion object {

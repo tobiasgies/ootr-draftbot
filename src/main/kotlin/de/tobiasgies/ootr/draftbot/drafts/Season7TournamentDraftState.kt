@@ -2,6 +2,7 @@ package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
+import io.opentelemetry.instrumentation.annotations.SpanAttribute
 import io.opentelemetry.instrumentation.annotations.WithSpan
 
 class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
@@ -41,7 +42,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
     }
 
     @WithSpan
-    fun banSetting(name: String) {
+    fun banSetting(@SpanAttribute name: String) {
         if (currentStep != Step.BAN) {
             throw IllegalStateException("Cannot ban a setting before the ban step")
         }
@@ -57,7 +58,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
     }
 
     @WithSpan
-    fun pickMajor(name: String, optionName: String) {
+    fun pickMajor(@SpanAttribute name: String, @SpanAttribute optionName: String) {
         if (currentStep != Step.PICK_MAJOR) {
             throw IllegalStateException("Cannot pick a major setting before the major pick step")
         }
@@ -76,7 +77,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
     }
 
     @WithSpan
-    fun pickMinor(name: String, optionName: String) {
+    fun pickMinor(@SpanAttribute name: String, @SpanAttribute optionName: String) {
         if (currentStep != Step.PICK_MINOR) {
             throw IllegalStateException("Cannot pick a minor setting before the minor pick step")
         }

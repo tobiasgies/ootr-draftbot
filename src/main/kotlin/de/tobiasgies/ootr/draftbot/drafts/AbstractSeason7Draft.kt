@@ -2,10 +2,13 @@ package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.Preset
+import de.tobiasgies.ootr.draftbot.util.withOtelContext
 import dev.minn.jda.ktx.interactions.components.button
 import dev.minn.jda.ktx.interactions.components.row
 import dev.minn.jda.ktx.messages.MessageEdit
+import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.WithSpan
+import mu.KLogging
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.interactions.callbacks.IDeferrableCallback
 import net.dv8tion.jda.api.interactions.components.buttons.ButtonStyle
@@ -17,7 +20,8 @@ abstract class AbstractSeason7Draft(
     protected abstract val draftState: DraftResult
 
     @WithSpan
-    protected fun displayFinalDraft(previous: IDeferrableCallback) {
+    protected suspend fun displayFinalDraft(previous: IDeferrableCallback) {
+        val otelContext = Context.current()
         if (!draftState.isComplete) {
             throw IllegalStateException("Cannot display draft result before the draft is complete")
         }
@@ -26,16 +30,20 @@ abstract class AbstractSeason7Draft(
             style = ButtonStyle.SUCCESS,
             user = previous.user
         ) { button ->
-            button.deferEdit().queue()
-            rollSeedAndDisplay(button)
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                rollSeedAndDisplay(button)
+            }
         }
         val cancelDraftButton = previous.jda.button(
             label = "No, these are trash, discard them.",
             style = ButtonStyle.DANGER,
             user = previous.user
         ) { button ->
-            button.deferEdit().queue()
-            cancelDraftAndDisplay(button)
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                cancelDraftAndDisplay(button)
+            }
         }
         previous.hook.editOriginal(MessageEdit {
             content = "**__Draft completed__**\n\n" +
@@ -60,7 +68,7 @@ abstract class AbstractSeason7Draft(
                     "${draftState.display()}\n" +
                     "You can find your seed here: ${seed.url}").queue()
         } catch (e: Exception) {
-            Season7TournamentDraft.logger.error(e) { "There was a persistent error generating a seed. Falling back to sending user to OOTR.com." }
+            logger.error(e) { "There was a persistent error generating a seed. Falling back to sending user to OOTR.com." }
             previous.hook.editOriginal(MessageEdit {
                 content = "**__Seed generation failed__**\n\n" +
                         "The following settings were drafted:\n\n" +
@@ -79,4 +87,6 @@ abstract class AbstractSeason7Draft(
         }).queue()
         previous.hook.editOriginalComponents(emptyList()).queue()
     }
+
+    companion object : KLogging()
 }
