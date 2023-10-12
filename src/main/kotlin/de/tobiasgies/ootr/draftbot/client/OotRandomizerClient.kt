@@ -14,8 +14,6 @@ import de.tobiasgies.ootr.draftbot.dto.VersionResponse
 import de.tobiasgies.ootr.draftbot.util.cached
 import de.tobiasgies.ootr.draftbot.util.executeAsync
 import de.tobiasgies.ootr.draftbot.util.withOtelContext
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Metrics
 import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.SpanAttribute
 import io.opentelemetry.instrumentation.annotations.WithSpan
@@ -30,8 +28,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class OotRandomizerClient(
     private val httpClient: OkHttpClient,
-    private val apiKey: String,
-    private val meterRegistry: MeterRegistry = Metrics.globalRegistry
+    private val apiKey: String
 ) : ConfigSource, SeedGenerator {
     private val om = ObjectMapper().registerKotlinModule()
 

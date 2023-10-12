@@ -30,7 +30,7 @@ fun main() {
     val ootrToken = dotenv["OOTR_TOKEN"]!!
 
     val httpClient = buildHttpClient(meterRegistry)
-    val ootrClient = OotRandomizerClient(httpClient, ootrToken, meterRegistry)
+    val ootrClient = OotRandomizerClient(httpClient, ootrToken)
 
     val drafts = listOf(
         Season7QualifierDraft.Factory(ootrClient, ootrClient, meterRegistry),
