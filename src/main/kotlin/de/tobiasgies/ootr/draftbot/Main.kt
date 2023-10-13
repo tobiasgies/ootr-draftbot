@@ -11,10 +11,7 @@ import dev.minn.jda.ktx.interactions.commands.option
 import dev.minn.jda.ktx.interactions.commands.upsertCommand
 import dev.minn.jda.ktx.jdabuilder.light
 import io.github.cdimascio.dotenv.dotenv
-import io.micrometer.core.instrument.Counter
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Metrics
-import io.micrometer.core.instrument.Tags
+import io.micrometer.core.instrument.*
 import io.micrometer.core.instrument.binder.okhttp3.OkHttpMetricsEventListener
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.opentelemetry.api.GlobalOpenTelemetry
@@ -65,13 +62,32 @@ private fun setupJda(
     }.queue()
 
     jda.onCommand(name = "draft") onDraftCommand@{ event ->
+        val type = event.getOption("type")!!.asString
+        val observabilityTags = if (event.channelType.isGuild) {
+            mapOf(
+                "draft_type" to type,
+                "location" to "guild",
+                "guild" to event.guildChannel.guild.id,
+                "guild_name" to event.guildChannel.guild.name,
+                "channel" to event.guildChannel.id,
+                "channel_name" to event.guildChannel.name,
+            )
+        } else {
+            mapOf(
+                "draft_type" to type,
+                "location" to "private_message",
+            )
+        }
         val span = GlobalOpenTelemetry.getTracer("ootr-draftbot")
             .spanBuilder("onDraftCommand")
             .setSpanKind(io.opentelemetry.api.trace.SpanKind.SERVER)
+            .also { builder -> observabilityTags.forEach { (k, v) -> builder.setAttribute(k, v) } }
             .startSpan()
         try {
-            val type = event.getOption("type")!!.asString
-            meterRegistry.counter("draftbot.drafts.started", "type", type).increment()
+            meterRegistry.counter(
+                "draftbot.drafts.started",
+                observabilityTags.map { (k, v) -> Tag.of(k, v) }
+            ).increment()
 
             val draftFactory = drafts.find { it.identifier == type }
             if (draftFactory == null) {
