@@ -73,7 +73,7 @@ abstract class AbstractSeason7Draft(
             meterRegistry.countSeedRolled()
             previous.hook.deleteOriginal().queue()
             previous.hook.sendMessage("**__Seed generated__**\n\n" +
-                    "${previous.user.asMention}, The following settings were drafted:\n\n" +
+                    "${previous.user.asMention}, the following settings were drafted:\n\n" +
                     "${draftState.display()}\n" +
                     "You can find your seed here: ${seed.url}").queue()
         } catch (e: Exception) {
