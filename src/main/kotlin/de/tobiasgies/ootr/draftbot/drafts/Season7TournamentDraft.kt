@@ -8,21 +8,23 @@ import de.tobiasgies.ootr.draftbot.data.Preset
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
 import de.tobiasgies.ootr.draftbot.util.withOtelContext
 import dev.minn.jda.ktx.events.onStringSelect
-import dev.minn.jda.ktx.interactions.components.StringSelectMenu
-import dev.minn.jda.ktx.interactions.components.button
-import dev.minn.jda.ktx.interactions.components.option
-import dev.minn.jda.ktx.interactions.components.row
+import dev.minn.jda.ktx.interactions.components.*
+import dev.minn.jda.ktx.jdabuilder.scope
 import dev.minn.jda.ktx.messages.MessageEdit
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Metrics
 import io.opentelemetry.context.Context
 import io.opentelemetry.instrumentation.annotations.WithSpan
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import mu.KLogging
+import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.events.interaction.command.GenericCommandInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent
 import java.lang.Math.random
 import java.util.*
+import kotlin.time.Duration
 
 class Season7TournamentDraft(
     initialDraftPool: DraftPool,
@@ -89,7 +91,7 @@ class Season7TournamentDraft(
     private suspend fun displayBanSelection(previous: ButtonInteractionEvent, type: String, bannableSettings: Set<String>) {
         val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
-        previous.jda.onStringSelect("ban_setting_$selectUuid") { select ->
+        val listener = previous.jda.onStringSelect("ban_setting_$selectUuid") { select ->
             withOtelContext(otelContext) {
                 select.deferEdit().queue()
                 draftState.banSetting(select.values.first())
@@ -110,15 +112,17 @@ class Season7TournamentDraft(
                 bannableSettings.forEach { option(it.capitalize(), it) }
             })
         }).queue()
+        previous.jda.removeEventListenerLater(listener)
     }
 
     @WithSpan
     private suspend fun displayMajorPickSelection(previous: StringSelectInteractionEvent) {
         val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
-        previous.jda.onStringSelect("pick_major_setting_$selectUuid") { select ->
+        val listener = previous.jda.onStringSelect("pick_major_setting_$selectUuid") { select ->
             withOtelContext(otelContext) {
                 select.deferEdit().queue()
+                select.jda.removeEventListener(this)
                 val (draftable, optionName) = select.values.first().split('=')
                 draftState.pickMajor(draftable, optionName)
                 meterRegistry.countPick(select.values.first(), "major", "user")
@@ -137,20 +141,25 @@ class Season7TournamentDraft(
             components += row(StringSelectMenu("pick_major_setting_$selectUuid", "Pick a setting") {
                 draftState.draftPool.major.forEach { draftable ->
                     draftable.value.options.forEach {
-                        option("${draftable.key.capitalize()}: ${it.key.capitalize()}", "${draftable.key}=${it.key}")
+                        option(
+                            "${draftable.key.capitalize()}: ${it.key.capitalize()}",
+                            draftChoiceValue(draftable.value, it.key)
+                        )
                     }
                 }
             })
         }).queue()
+        previous.jda.removeEventListenerLater(listener)
     }
 
     @WithSpan
     private suspend fun displayMinorPickSelection(previous: StringSelectInteractionEvent) {
         val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
-        previous.jda.onStringSelect("pick_minor_setting_$selectUuid") { select ->
+        val listener = previous.jda.onStringSelect("pick_minor_setting_$selectUuid") { select ->
             withOtelContext(otelContext) {
                 select.deferEdit().queue()
+                select.jda.removeEventListener(this)
                 val (draftable, optionName) = select.values.first().split('=')
                 draftState.pickMinor(draftable, optionName)
                 meterRegistry.countPick(select.values.first(), "minor", "user")
@@ -176,6 +185,7 @@ class Season7TournamentDraft(
                 }
             })
         }).queue()
+        previous.jda.removeEventListenerLater(listener)
     }
 
     @WithSpan
@@ -209,45 +219,6 @@ class Season7TournamentDraft(
         meterRegistry.countPick(draftChoiceValue(draftable.value, draftableOption), "minor","bot")
     }
 
-    private fun draftChoiceValue(draftable: Draftable, optionName: String) = "${draftable.name}=$optionName"
-
-    private fun MeterRegistry.countPickingOrder(firstPick: String) {
-        counter(
-            "draftbot.drafts.picking_order",
-            "draft_type",
-            Season7TournamentDraft::class.simpleName,
-            "first_pick",
-            firstPick
-        ).increment()
-    }
-    private fun MeterRegistry.countPick(setting: String, settingType: String, pickedBy: String) {
-        counter(
-            "draftbot.drafts.picked_setting",
-            "type",
-            Season7TournamentDraft::class.simpleName,
-            "setting",
-            setting,
-            "setting_type",
-            settingType,
-            "picked_by",
-            pickedBy,
-        ).increment()
-    }
-
-    private fun MeterRegistry.countBan(setting: String, settingType: String, bannedBy: String) {
-        counter(
-            "draftbot.drafts.banned_setting",
-            "type",
-            Season7TournamentDraft::class.simpleName,
-            "setting",
-            setting,
-            "setting_type",
-            settingType,
-            "banned_by",
-            bannedBy,
-        ).increment()
-    }
-
     class Factory(
         private val configSource: ConfigSource,
         private val seedGenerator: SeedGenerator,
@@ -267,5 +238,53 @@ class Season7TournamentDraft(
 
     companion object : KLogging() {
         private const val BAN_MINOR_CHANCE = 0.2
+
+        private fun draftChoiceValue(draftable: Draftable, optionName: String) = "${draftable.name}=$optionName"
+
+        private fun JDA.removeEventListenerLater(eventListener: Any, timeout: Duration = ButtonDefaults.EXPIRATION) {
+            if (timeout.isPositive() && timeout.isFinite()) {
+                scope.launch {
+                    delay(timeout)
+                    removeEventListener(eventListener)
+                }
+            }
+        }
+
+        private fun MeterRegistry.countPickingOrder(firstPick: String) {
+            counter(
+                "draftbot.drafts.picking_order",
+                "draft_type",
+                Season7TournamentDraft::class.simpleName,
+                "first_pick",
+                firstPick
+            ).increment()
+        }
+        private fun MeterRegistry.countPick(setting: String, settingType: String, pickedBy: String) {
+            counter(
+                "draftbot.drafts.picked_setting",
+                "type",
+                Season7TournamentDraft::class.simpleName,
+                "setting",
+                setting,
+                "setting_type",
+                settingType,
+                "picked_by",
+                pickedBy,
+            ).increment()
+        }
+
+        private fun MeterRegistry.countBan(setting: String, settingType: String, bannedBy: String) {
+            counter(
+                "draftbot.drafts.banned_setting",
+                "type",
+                Season7TournamentDraft::class.simpleName,
+                "setting",
+                setting,
+                "setting_type",
+                settingType,
+                "banned_by",
+                bannedBy,
+            ).increment()
+        }
     }
 }
