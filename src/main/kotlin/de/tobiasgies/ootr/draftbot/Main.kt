@@ -91,7 +91,13 @@ private fun setupJda(
 
             val draftFactory = drafts.find { it.identifier == type }
             if (draftFactory == null) {
-                meterRegistry.counter("draftbot.drafts.failed", "reason", "unknown_type").increment()
+                meterRegistry.counter(
+                    "draftbot.drafts.failed",
+                    "draft_type",
+                    "unknown",
+                    "reason",
+                    "unknown_type"
+                ).increment()
                 event.reply("Unknown draft type: $type").queue()
                 return@onDraftCommand
             }
