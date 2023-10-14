@@ -97,8 +97,10 @@ class Season7TournamentDraft(
                 draftState.banSetting(select.values.first())
                 meterRegistry.countBan(select.values.first(), type, "user")
                 if (draftState.currentStep == Step.BAN) {
-                    // The bot hasn't banned yet.
+                    // User banned first, the bot hasn't banned yet.
                     executeBotBan()
+                } else if (draftState.currentStep == Step.PICK_MAJOR) {
+                    // User banned second, so the bot needs to pick first.
                     executeBotPickMajor()
                 }
                 displayMajorPickSelection(select)
