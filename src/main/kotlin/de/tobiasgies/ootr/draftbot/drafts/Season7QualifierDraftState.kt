@@ -2,6 +2,7 @@ package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
+import de.tobiasgies.ootr.draftbot.drafts.Season7FriendlyNames.friendlyName
 
 class Season7QualifierDraftState(
     val majorPick: String,
@@ -16,8 +17,8 @@ class Season7QualifierDraftState(
     )
 
     override fun display() = buildString {
-        appendLine("* **Major pick:** ${majorPick.capitalize()}: ${majorOption.name.capitalize()}")
-        appendLine("* **Minor pick:** ${minorPick.capitalize()}: ${minorOption.name.capitalize()}")
+        appendLine("* **Major pick:** ${majorOption.friendlyName}")
+        appendLine("* **Minor pick:** ${minorOption.friendlyName}")
     }
 
     override fun toString(): String {

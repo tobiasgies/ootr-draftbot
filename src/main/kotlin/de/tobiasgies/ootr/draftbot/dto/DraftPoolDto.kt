@@ -12,12 +12,12 @@ data class DraftPoolDto(
     fun toDraftPool() = DraftPool(
         major = major.mapValues { (name, draftable) ->
             Draftable(name, draftable.mapValues { (optionName, settings) ->
-                DraftableOption(optionName, settings)
+                DraftableOption(name, optionName, settings)
             })
         },
         minor = minor.mapValues { (name, draftable) ->
             Draftable(name, draftable.mapValues { (optionName, settings) ->
-                DraftableOption(optionName, settings)
+                DraftableOption(name, optionName, settings)
             })
         },
     )

@@ -1,7 +1,9 @@
 package de.tobiasgies.ootr.draftbot.drafts
 
 import de.tobiasgies.ootr.draftbot.data.DraftPool
+import de.tobiasgies.ootr.draftbot.data.Draftable
 import de.tobiasgies.ootr.draftbot.data.DraftableOption
+import de.tobiasgies.ootr.draftbot.drafts.Season7FriendlyNames.friendlyName
 import io.opentelemetry.instrumentation.annotations.SpanAttribute
 import io.opentelemetry.instrumentation.annotations.WithSpan
 
@@ -19,7 +21,7 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         get() = majorPicks + minorPicks
 
     private var userBansFirst: Boolean? = null
-    private var bans: List<String> = emptyList()
+    private var bans: List<Draftable> = emptyList()
     private var majorPicks: Map<String, DraftableOption> = mapOf()
     private var minorPicks: Map<String, DraftableOption> = mapOf()
 
@@ -46,9 +48,10 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
         if (currentStep != Step.BAN) {
             throw IllegalStateException("Cannot ban a setting before the ban step")
         }
-        if (draftPool.major.containsKey(name) || draftPool.minor.containsKey(name)) {
+        if (draftPool.combined.containsKey(name)) {
+            val item = draftPool.combined[name]!!
             draftPool = draftPool.without(name)
-            bans += name
+            bans += item
         } else {
             throw IllegalArgumentException("Unknown draftable setting: $name")
         }
@@ -102,20 +105,16 @@ class Season7TournamentDraftState(initialDraftPool: DraftPool) : DraftResult {
                 appendLine("* **First to ban:** $firstToBan")
             }
             if (bans.isNotEmpty()) {
-                appendLine("* **Bans:** ${bans.map { it.capitalize() }.joinToString(", ")}")
+                appendLine("* **Bans:** ${bans.map { it.friendlyName }.joinToString(", ")}")
             }
             if (majorPicks.isNotEmpty()) {
                 append("* **Major picks:** ")
-                appendLine(majorPicks.map {
-                    "${it.key.capitalize()}: ${it.value.name.capitalize()}"
-                }.joinToString(", "))
+                appendLine(majorPicks.map { it.value.friendlyName }.joinToString(", "))
 
             }
             if (minorPicks.isNotEmpty()) {
                 append("* **Minor picks:** ")
-                appendLine(minorPicks.map {
-                    "${it.key.capitalize()}: ${it.value.name.capitalize()}"
-                }.joinToString(", "))
+                appendLine(minorPicks.map { it.value.friendlyName }.joinToString(", "))
             }
         }
     }

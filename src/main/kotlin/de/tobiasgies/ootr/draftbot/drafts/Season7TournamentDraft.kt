@@ -5,6 +5,7 @@ import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.Draftable
 import de.tobiasgies.ootr.draftbot.data.Preset
+import de.tobiasgies.ootr.draftbot.drafts.Season7FriendlyNames.friendlyName
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
 import de.tobiasgies.ootr.draftbot.util.withOtelContext
 import dev.minn.jda.ktx.events.onStringSelect
@@ -80,8 +81,8 @@ class Season7TournamentDraft(
             content = "**__Step 2: Bans__**\n\n" +
                     "**Current draft state:**\n${draftState.display()}\n" +
                     "**Bannable settings:**\n" +
-                    "* **Major settings:** ${draftState.draftPool.major.keys.map { it.capitalize() }.joinToString(", ")}\n" +
-                    "* **Minor settings:** ${draftState.draftPool.minor.keys.map { it.capitalize() }.joinToString(", ")}\n\n" +
+                    "* **Major settings:** ${draftState.draftPool.major.values.joinToString(", ") { it.friendlyName }}\n" +
+                    "* **Minor settings:** ${draftState.draftPool.minor.values.joinToString(", ") { it.friendlyName }}\n\n" +
                     "Would you like to ban a major or minor setting?"
             components += row(banMajorButton, banMinorButton)
         }).queue()
@@ -144,7 +145,7 @@ class Season7TournamentDraft(
                 draftState.draftPool.major.forEach { draftable ->
                     draftable.value.options.forEach {
                         option(
-                            "${draftable.key.capitalize()}: ${it.key.capitalize()}",
+                            it.value.friendlyName,
                             draftChoiceValue(draftable.value, it.key)
                         )
                     }
@@ -180,7 +181,7 @@ class Season7TournamentDraft(
                 draftState.draftPool.minor.forEach { draftable ->
                     draftable.value.options.forEach {
                         option(
-                            "${draftable.key.capitalize()}: ${it.key.capitalize()}",
+                            it.value.friendlyName,
                             draftChoiceValue(draftable.value, it.key)
                         )
                     }

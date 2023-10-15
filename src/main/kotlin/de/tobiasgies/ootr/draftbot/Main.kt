@@ -15,6 +15,7 @@ import io.micrometer.core.instrument.*
 import io.micrometer.core.instrument.binder.okhttp3.OkHttpMetricsEventListener
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.opentelemetry.api.GlobalOpenTelemetry
+import io.opentelemetry.api.trace.SpanKind
 import mu.KotlinLogging
 import net.dv8tion.jda.api.JDA
 import okhttp3.OkHttpClient
@@ -80,7 +81,7 @@ private fun setupJda(
         }
         val span = GlobalOpenTelemetry.getTracer("ootr-draftbot")
             .spanBuilder("onDraftCommand")
-            .setSpanKind(io.opentelemetry.api.trace.SpanKind.SERVER)
+            .setSpanKind(SpanKind.SERVER)
             .also { builder -> observabilityTags.forEach { (k, v) -> builder.setAttribute(k, v) } }
             .startSpan()
         try {
