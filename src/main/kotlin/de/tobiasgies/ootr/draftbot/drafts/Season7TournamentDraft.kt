@@ -4,6 +4,7 @@ import de.tobiasgies.ootr.draftbot.client.ConfigSource
 import de.tobiasgies.ootr.draftbot.client.SeedGenerator
 import de.tobiasgies.ootr.draftbot.data.DraftPool
 import de.tobiasgies.ootr.draftbot.data.Draftable
+import de.tobiasgies.ootr.draftbot.data.DraftableOption
 import de.tobiasgies.ootr.draftbot.data.Preset
 import de.tobiasgies.ootr.draftbot.drafts.Season7FriendlyNames.friendlyName
 import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraftState.Step
@@ -68,13 +69,13 @@ class Season7TournamentDraft(
         val banMajorButton = previous.jda.button(label = "Major setting", user = previous.user) { button ->
             withOtelContext(otelContext) {
                 button.deferEdit().queue()
-                displayBanSelection(button, "major", draftState.draftPool.major.keys)
+                displayBanSelection(button, "major", draftState.draftPool.major.values)
             }
         }
         val banMinorButton = previous.jda.button(label = "Minor setting", user = previous.user) { button ->
             withOtelContext(otelContext) {
                 button.deferEdit().queue()
-                displayBanSelection(button, "minor", draftState.draftPool.minor.keys)
+                displayBanSelection(button, "minor", draftState.draftPool.minor.values)
             }
         }
         previous.hook.editOriginal(MessageEdit {
@@ -89,7 +90,7 @@ class Season7TournamentDraft(
     }
 
     @WithSpan
-    private suspend fun displayBanSelection(previous: ButtonInteractionEvent, type: String, bannableSettings: Set<String>) {
+    private suspend fun displayBanSelection(previous: ButtonInteractionEvent, type: String, bannableSettings: Collection<Draftable>) {
         val otelContext = Context.current()
         val selectUuid = UUID.randomUUID()
         val listener = previous.jda.onStringSelect("ban_setting_$selectUuid") { select ->
@@ -112,7 +113,7 @@ class Season7TournamentDraft(
                     "**Current draft state:**\n${draftState.display()}\n" +
                     "Banning a $type setting."
             components += row(StringSelectMenu("ban_setting_$selectUuid", "Select a setting to ban") {
-                bannableSettings.forEach { option(it.capitalize(), it) }
+                bannableSettings.forEach { option(it.friendlyName, it.name) }
             })
         }).queue()
         previous.jda.removeEventListenerLater(listener)
@@ -146,7 +147,7 @@ class Season7TournamentDraft(
                     draftable.value.options.forEach {
                         option(
                             it.value.friendlyName,
-                            draftChoiceValue(draftable.value, it.key)
+                            it.value.choiceValue
                         )
                     }
                 }
@@ -182,7 +183,7 @@ class Season7TournamentDraft(
                     draftable.value.options.forEach {
                         option(
                             it.value.friendlyName,
-                            draftChoiceValue(draftable.value, it.key)
+                            it.value.choiceValue
                         )
                     }
                 }
@@ -206,20 +207,20 @@ class Season7TournamentDraft(
 
     @WithSpan
     private fun executeBotPickMajor() {
-        val draftable = draftState.draftPool.major.entries.random()
-        val draftableOption = draftable.value.options.keys.random()
+        val draftable = draftState.draftPool.major.values.random()
+        val draftableOption = draftable.options.values.random()
 
-        draftState.pickMajor(draftable.key, draftableOption)
-        meterRegistry.countPick(draftChoiceValue(draftable.value, draftableOption), "major","bot")
+        draftState.pickMajor(draftable.name, draftableOption.optionName)
+        meterRegistry.countPick(draftableOption.choiceValue, "major","bot")
     }
 
     @WithSpan
     private fun executeBotPickMinor() {
-        val draftable = draftState.draftPool.minor.entries.random()
-        val draftableOption = draftable.value.options.keys.random()
+        val draftable = draftState.draftPool.minor.values.random()
+        val draftableOption = draftable.options.values.random()
 
-        draftState.pickMinor(draftable.key, draftableOption)
-        meterRegistry.countPick(draftChoiceValue(draftable.value, draftableOption), "minor","bot")
+        draftState.pickMinor(draftable.name, draftableOption.optionName)
+        meterRegistry.countPick(draftableOption.choiceValue, "minor","bot")
     }
 
     class Factory(
@@ -242,7 +243,8 @@ class Season7TournamentDraft(
     companion object : KLogging() {
         private const val BAN_MINOR_CHANCE = 0.2
 
-        private fun draftChoiceValue(draftable: Draftable, optionName: String) = "${draftable.name}=$optionName"
+        private val DraftableOption.choiceValue: String
+            get() = "$draftableName=$optionName"
 
         private fun JDA.removeEventListenerLater(eventListener: Any, timeout: Duration = ButtonDefaults.EXPIRATION) {
             if (timeout.isPositive() && timeout.isFinite()) {
