@@ -57,13 +57,27 @@ private fun setupJda(
     meterRegistry: MeterRegistry = Metrics.globalRegistry
 ) {
     jda.upsertCommand("draft", "Start a tournament-style settings draft") {
-        option<String>("type", "The draft type to simulate") {
+        option<String>(name = "type", description = "The draft type to simulate", required = true) {
             drafts.forEach { choice(it.friendlyName, it.identifier) }
         }
     }.queue()
 
     jda.onCommand(name = "draft") onDraftCommand@{ event ->
-        val type = event.getOption("type")!!.asString
+        val option = event.getOption("type")
+        if (option == null) {
+            meterRegistry.counter(
+                "draftbot.drafts.failed",
+                "draft_type",
+                "unknown",
+                "reason",
+                "type_not_set"
+            ).increment()
+            event.reply("Discord should prompt you to select a draft type " +
+                    "(${drafts.joinToString(", ") { it.friendlyName }}) when you type the `/draft` command. " +
+                    "Please select one before submitting the command.").queue()
+            return@onDraftCommand
+        }
+        val type = option.asString
         val observabilityTags = if (event.channelType.isGuild) {
             mapOf(
                 "draft_type" to type,
