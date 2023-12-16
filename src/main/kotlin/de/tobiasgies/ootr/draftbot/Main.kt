@@ -1,10 +1,7 @@
 package de.tobiasgies.ootr.draftbot
 
 import de.tobiasgies.ootr.draftbot.client.OotRandomizerClient
-import de.tobiasgies.ootr.draftbot.drafts.Draft
-import de.tobiasgies.ootr.draftbot.drafts.DraftFactory
-import de.tobiasgies.ootr.draftbot.drafts.Season7QualifierDraft
-import de.tobiasgies.ootr.draftbot.drafts.Season7TournamentDraft
+import de.tobiasgies.ootr.draftbot.drafts.*
 import dev.minn.jda.ktx.events.onCommand
 import dev.minn.jda.ktx.interactions.commands.choice
 import dev.minn.jda.ktx.interactions.commands.option
@@ -33,6 +30,7 @@ fun main() {
     val drafts = listOf(
         Season7QualifierDraft.Factory(ootrClient, ootrClient, meterRegistry),
         Season7TournamentDraft.Factory(ootrClient, ootrClient, meterRegistry),
+        Season7TournamentFullAutoDraft.Factory(ootrClient, ootrClient, meterRegistry),
     )
 
     val jda = light(token = discordToken, enableCoroutines = true)

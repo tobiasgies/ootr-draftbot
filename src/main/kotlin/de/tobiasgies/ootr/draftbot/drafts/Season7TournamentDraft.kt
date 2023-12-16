@@ -229,7 +229,7 @@ class Season7TournamentDraft(
         private val meterRegistry: MeterRegistry = Metrics.globalRegistry
     ) : DraftFactory<Season7TournamentDraft> {
         override val identifier = Season7TournamentDraft::class.simpleName!!
-        override val friendlyName = "Season 7 Tournament, 1 vs 1 draft (2 bans, 2 major, 2 minor)"
+        override val friendlyName = "Season 7 Tournament, 1v1 draft (you vs bot - 2 bans, 2 major, 2 minor)"
         override fun createDraft(): Season7TournamentDraft {
             return Season7TournamentDraft(
                 configSource.draftPool,
