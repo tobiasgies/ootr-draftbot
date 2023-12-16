@@ -18,7 +18,7 @@ object Season7FriendlyNames {
             "keysy" to "Keysy (dungeon small keys and boss keys removed)",
             "anywhere" to "Keyrings anywhere (include Boss Keys)",
         )),
-        "required_only" to FriendlyName("Guarantee Reachable Locations", mapOf(
+        "required_only" to FriendlyName("Reachable Locations", mapOf(
             "on" to "Required Only (aka Beatable Only)"
         )),
         "fountain" to FriendlyName("Zora's Fountain", mapOf("open" to "Open Fountain")),
@@ -33,14 +33,14 @@ object Season7FriendlyNames {
         "cuccos" to FriendlyName("Anju's Chickens", mapOf("1" to "1 Cucco")),
         "free_scarecrow" to FriendlyName("Free Scarecrow", mapOf("on" to "Enabled")),
         "camc" to FriendlyName("Chest Appearance Matches Contents", mapOf("off" to "Disabled")),
-        "mask_quest" to FriendlyName("Complete Mask Quest", mapOf("complete" to "Enabled, fast Bunny Hood disabled")),
+        "mask_quest" to FriendlyName("Mask Quest", mapOf("complete" to "Complete, fast Bunny Hood disabled")),
         "blue_fire_arrows" to FriendlyName("Blue Fire Arrows", mapOf("on" to "Enabled")),
         "owl_warps" to FriendlyName("Random Owl Warps", mapOf("random" to "Enabled")),
         "song_warps" to FriendlyName("Random Warp Song Destinations", mapOf("random" to "Enabled")),
         "shuffle_beans" to FriendlyName("Shuffle Magic Beans", mapOf("on" to "Enabled")),
         "expensive_merchants" to FriendlyName("Shuffle Expensive Merchants", mapOf("on" to "Enabled")),
         "beans_planted" to FriendlyName("Pre-planted Magic Beans", mapOf("on" to "Enabled")),
-        "bombchus_in_logic" to FriendlyName("Add Bombchu Bag and Drops", mapOf("on" to "Enabled (Bombchus in logic)")),
+        "bombchus_in_logic" to FriendlyName("Bombchu Bag and Drops", mapOf("on" to "Enabled (Bombchus in logic)")),
     )
 
     val Draftable.friendlyName: String
