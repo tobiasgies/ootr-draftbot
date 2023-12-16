@@ -32,18 +32,28 @@ abstract class AbstractSeason7Draft(
             meterRegistry.countDraftException(e)
             throw e
         }
-        val rollSeedButton = previous.jda.button(
-            label = "Yes, I want to play these settings!",
-            style = ButtonStyle.SUCCESS,
+        val rollReleaseSeedButton = previous.jda.button(
+            label = "Roll on stable release",
+            style = ButtonStyle.PRIMARY,
             user = previous.user
         ) { button ->
             withOtelContext(otelContext) {
                 button.deferEdit().queue()
-                rollSeedAndDisplay(button)
+                rollSeedAndDisplay(button, useDevBranch = false)
+            }
+        }
+        val rollDevSeedButton = previous.jda.button(
+            label = "Roll on latest dev",
+            style = ButtonStyle.SECONDARY,
+            user = previous.user
+        ) { button ->
+            withOtelContext(otelContext) {
+                button.deferEdit().queue()
+                rollSeedAndDisplay(button, useDevBranch = true)
             }
         }
         val cancelDraftButton = previous.jda.button(
-            label = "No, these are trash, discard them.",
+            label = "These settings are trash, discard them",
             style = ButtonStyle.DANGER,
             user = previous.user
         ) { button ->
@@ -57,19 +67,19 @@ abstract class AbstractSeason7Draft(
                     "The following settings were drafted:\n\n" +
                     "${draftState.display()}\n" +
                     "Would you like me to roll you a seed with these settings?"
-            components += row(rollSeedButton, cancelDraftButton)
+            components += row(rollReleaseSeedButton, rollDevSeedButton, cancelDraftButton)
         }).queue()
     }
 
     @WithSpan
-    private suspend fun rollSeedAndDisplay(previous: ButtonInteractionEvent) {
+    private suspend fun rollSeedAndDisplay(previous: ButtonInteractionEvent, useDevBranch: Boolean) {
         meterRegistry.countSeedRequested()
         previous.hook.editOriginal(MessageEdit { content = "Rolling seed..." }).queue()
         previous.hook.editOriginalComponents(emptyList()).queue()
 
         val patchedSettings = settingsPreset.patchWithDraftResult(draftState, ::season7SpecialCaseHandler)
         try {
-            val seed = seedGenerator.rollSeed(patchedSettings)
+            val seed = seedGenerator.rollSeed(patchedSettings, useDevBranch)
             meterRegistry.countSeedRolled()
             previous.hook.deleteOriginal().queue()
             previous.hook.sendMessage("**__Seed generated__**\n\n" +

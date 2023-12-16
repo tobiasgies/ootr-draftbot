@@ -50,7 +50,7 @@ class OotRandomizerClient(
             val mapOfMaps = om.readValue(responseBody, object : TypeReference<Map<String, Map<String, Any>>>() {})
             mapOfMaps.mapValues { Preset(it.key, it.value) }
         }
-        fetch(PRESETS_ENDPOINT, parser)
+        fetch(PRESETS_DEV_ENDPOINT, parser)
     }
 
     override val draftPool by cached {
@@ -69,13 +69,17 @@ class OotRandomizerClient(
     }
 
     @WithSpan
-    override suspend fun rollSeed(settings: Map<String, Any>) = doRollSeed(settings)
+    override suspend fun rollSeed(settings: Map<String, Any>, useDevBranch: Boolean) = doRollSeed(settings, useDevBranch)
 
     @WithSpan
-    private suspend fun doRollSeed(@SpanAttribute settings: Map<String, Any>, @SpanAttribute retryCount: Int = 0): Seed {
+    private suspend fun doRollSeed(
+        @SpanAttribute settings: Map<String, Any>,
+        @SpanAttribute useDevBranch: Boolean,
+        @SpanAttribute retryCount: Int = 0
+    ): Seed {
         val otelContext = Context.current()
         val url = SEED_ENDPOINT.toHttpUrl().newBuilder()
-            .addQueryParameter("version", "dev_$latestDevVersion")
+            .apply { if (useDevBranch) addQueryParameter("version", "dev_$latestDevVersion") }
             .addQueryParameter("key", apiKey)
             .build()
         val request = Request.Builder()
@@ -101,7 +105,7 @@ class OotRandomizerClient(
             val retryInterval = 1.seconds * (retryCount + 1)
             logger.warn(e) { "There was an issue requesting a seed. Retrying in $retryInterval." }
             delay(retryInterval)
-            return doRollSeed(settings, retryCount + 1)
+            return doRollSeed(settings, useDevBranch, retryCount + 1)
         }
     }
 
@@ -132,7 +136,7 @@ class OotRandomizerClient(
     }
 
     companion object : KLogging() {
-        private val PRESETS_ENDPOINT = "https://raw.githubusercontent.com/TestRunnerSRL/OoT-Randomizer/Dev/data/presets_default.json"
+        private val PRESETS_DEV_ENDPOINT = "https://raw.githubusercontent.com/OoTRandomizer/OoT-Randomizer/Dev/data/presets_default.json"
         private val DRAFT_POOL_ENDPOINT = "https://ootrandomizer.com/rtgg/draft_settings.json"
         private val SEED_ENDPOINT = "https://ootrandomizer.com/api/v2/seed/create"
         private val STATUS_ENDPOINT = "https://ootrandomizer.com/api/v2/seed/status"
